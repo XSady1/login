@@ -1,61 +1,22 @@
 <?php
+session_start(); // Start the session to check user login status
+
 $servername = "localhost";
 $username = "ads_user";
 $password = "Koumbares2024!";
 $dbname = "ads_board";
 
-// Создание соединения
+// Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
 
-// Проверка соединения
+// Check connection
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-session_start();
-
-// Проверка, если пользователь уже авторизован
-if (isset($_SESSION['user_id'])) {
-    header("Location: index.php"); // Перенаправление на главную страницу
-    exit;
-}
-
-// Обработка данных формы
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-
-    if (!empty($username) && !empty($password)) {
-        $stmt = $conn->prepare("SELECT id, password FROM users WHERE username = ?");
-        if ($stmt === false) {
-            die('Prepare failed: ' . htmlspecialchars($conn->error));
-        }
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $stmt->store_result();
-
-        if ($stmt->num_rows > 0) {
-            $stmt->bind_result($user_id, $hashed_password);
-            $stmt->fetch();
-
-            // Проверка пароля
-            if (password_verify($password, $hashed_password)) {
-                $_SESSION['user_id'] = $user_id;
-                header("Location: index.php");
-                exit;
-            } else {
-                echo "Invalid username or password.";
-            }
-        } else {
-            echo "Invalid username or password.";
-        }
-        $stmt->close();
-    } else {
-        echo "Please fill in all fields.";
-    }
-}
-
-$conn->close();
+// Retrieve all ads
+$sql = "SELECT * FROM ads ORDER BY created_at DESC"; // Adjust table and columns as needed
+$result = $conn->query($sql);
 ?>
 
 <!DOCTYPE html>
@@ -63,17 +24,48 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="styles/style.css">
+    <title>Home Page</title>
+    <link rel="stylesheet" href="styles/styles.css"> <!-- Ensure this path is correct -->
 </head>
 <body>
-    <h1>Login</h1>
-    <form method="post" action="">
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required><br>
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required><br>
-        <input type="submit" value="Login">
-    </form>
+    <header>
+        <h1>Welcome to Koumbares</h1>
+        <div class="button-container">
+            <?php if (isset($_SESSION['username'])): ?>
+                <span class="welcome-message">Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?>!</span>
+                <button class="button" onclick="window.location.href='logout.php'">Logout</button>
+            <?php else: ?>
+                <button class="button" onclick="window.location.href='https://koumbares.com/ads_board/login.php'">Login</button>
+                <button class="button" onclick="window.location.href='https://koumbares.com/ads_board/registration.php'">Register</button>
+            <?php endif; ?>
+        </div>
+    </header>
+    <main>
+        <h2>All Ads</h2>
+        <?php if ($result->num_rows > 0): ?>
+            <ul>
+                <?php while ($row = $result->fetch_assoc()): ?>
+                    <li>
+                        <h3><?php echo htmlspecialchars($row['title']); ?></h3>
+                        <p><?php echo htmlspecialchars($row['description']); ?></p>
+                        <p><em>Posted on: <?php echo htmlspecialchars($row['created_at']); ?></em></p>
+                    </li>
+                <?php endwhile; ?>
+            </ul>
+        <?php else: ?>
+            <p>No ads available.</p>
+        <?php endif; ?>
+    </main>
+    <footer>
+        <section>
+            <h2>About</h2>
+            <p>Current server time is: <?php echo date('Y-m-d H:i:s'); ?></p>
+        </section>
+        <p>&copy; <?php echo date('Y'); ?> koumbares.com All rights reserved.</p>
+    </footer>
+    <?php
+    // Close connection
+    $conn->close();
+    ?>
 </body>
 </html>
